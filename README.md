@@ -18,3 +18,7 @@ Algumas pastas:
 #workspace_cpp:
 ##BooleanGraph (2nd/2015)
     Geração de grafos aleatórios seguindo regras de expressões booleanas aleatórias.
+
+#python:
+##predator_prey_contamination (2nd/2015)
+	    Implementação de um algoritmo de contaminação por BFS.
