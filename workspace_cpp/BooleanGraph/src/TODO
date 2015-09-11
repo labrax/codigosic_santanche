@@ -1,0 +1,19 @@
+boolean
+	nodes:
+		boolean_node ok
+		boolean_and ok
+		boolean_or ok
+		boolean_not ok
+		boolean_variable ok
+	boolean_expression_factory ok
+	boolean_store ok (unordered_map / vector)
+
+graph:
+	node ok
+	output_graph
+	csv_output
+	neo4j_output
+
+main
+config
+random_generator ok

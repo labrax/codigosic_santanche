@@ -1,0 +1,18 @@
+### Eclipse files
+*/.metadata/*
+*/RemoteSystemsTempFiles/*
+*/bin/*
+
+### C++ files
+*.o
+*.mk
+*.class
+/workspace_cpp/BooleanGraph/Debug*
+/workspace_cpp/BooleanGraph/Release*
+
+### Java files
+/workspace_java/.recommenders/*
+
+### Generated files
+*graph.db*
+*~

@@ -1,0 +1,523 @@
+package br.unicamp.ic.lis.ProjetoFishbase.Conversao;
+
+import java.sql.ResultSet;
+
+public class Main {
+	ConnectorAccess connAcc = null;
+	ConnectorCypher connCyp = null;
+	
+	// numbering for displayed information
+	Integer number_classes = 0;
+	Integer number_orders = 0;
+	Integer number_families = 0;
+	Integer number_genera = 0;
+	Integer number_species = 0;
+	
+	Integer number_countries = 0;
+	Integer number_faos = 0;
+	Integer number_ecosystems = 0;
+	
+	Integer number_relations_countfao = 0;
+	Integer number_relations_ecosystemcountry = 0;
+	Integer number_relations_ecosystemfao = 0;
+	
+	Integer number_predats = 0;
+	
+	Integer number_species_country = 0;
+	Integer number_species_FAO = 0;
+	Integer number_species_ecosystem = 0;
+	
+	Integer number_keys = 0;
+	Integer number_keyquestions = 0;
+	
+	public static void main(String [] args) {
+		Main a = new Main();
+		
+		System.out.println("Starting...");
+		
+		long start = System.currentTimeMillis();
+		a.start();
+		// transfer all taxonomic information, from classes to species
+		a.species_to_classes();
+		// transfer all area informations, countries, faos and ecosystems
+		a.areas_fao();
+		// transfer predators information
+		a.predats();
+		// transfer relations of species and areas
+		a.species_to_places();
+		// transfer information of keys
+		a.keys_to_all();
+		
+		// test neo4j node structure
+		//a.test();
+		
+		a.end();
+		long end = System.currentTimeMillis();
+
+		System.out.println("Finished after " + ((end - start) / 1000d) + " seconds.");
+	}
+	
+	public void start() {
+		// first neo4j connection because its faster
+		connCyp = new ConnectorCypher();
+		if(connCyp.isOk() == true) {
+			System.out.println("Neo4j: OK!");
+		}
+		else {
+			System.out.println("Neo4j: NOT OK!");
+			System.out.println("Exited.");
+			System.exit(-1);
+		}
+		System.out.println("Creating indexes...");
+		// create indexes to speed it up
+		connCyp.createIndexes();
+		connCyp.commit();
+		
+		System.out.println("Loading Access DB...");
+		connAcc = new ConnectorAccess();
+	}
+	
+	public void end() {
+		connCyp.commit();
+	}
+	
+	// tests for neo4j structure and node duplicity
+	public void test() {
+		//testa a criação class-genus
+		connCyp.createClass("1", "Classe", "Classe para todos os peixes");
+		connCyp.createOrder("2", "Ordem", "Ordeim", "1");
+		connCyp.createFamily("3", "Família", "Familiaum", "2");
+		connCyp.createGenus("4", "Frutas", "3");
+		
+		//criação de espécie com base em família
+		connCyp.createSpeciesFam("123", "Peixe Porco 1", "Prático", "3"); //os 3 peixes porquinhos
+		connCyp.createSpeciesFam("223", "Peixe Porco 2", "Heitor", "3");
+		connCyp.createSpeciesFam("225", "Peixe Porco 3", "Cícero", "3");
+		
+		//testa a criação de espécie com base em gênero
+		connCyp.createSpeciesGen("999", "Peixe Maça Isca", "Isca", "4");
+		
+		//testa a criação de locais 
+		connCyp.createCountry("CASA BEM RUIM", "Casa de cola, bambus e barbantes");
+		connCyp.createEcosystem("CASA RUIM", "Casa de madeira");
+		connCyp.createFAO("CASA BOA", "Casa sólida, feita de tijolos e cimento");
+		
+		//testa o relacionamento de locais com espécies
+		connCyp.relateSpecieCountry("CASA BEM RUIM", "123");
+		connCyp.relateSpecieEcosystem("CASA RUIM", "223");
+		connCyp.relateSpecieFAO("CASA BOA", "225");
+		
+		//testa o relacionamento entre locais
+		connCyp.relateEcosystemCountry("CASA RUIM", "CASA BEM RUIM");
+		connCyp.relateCountryFAO("CASA BEM RUIM", "CASA BOA");
+		connCyp.relateEcosystemFAO("CASA RUIM", "CASA BOA");
+		
+		//testa a criação de chaves
+		connCyp.createKey("1", "2", "3", "CASA BOA", "CASA BEM RUIM", "CASA RUIM");
+		connCyp.createKey("2", "", "", "", "", "");
+		connCyp.createKeyQuestion("4", "2", "3", "4", "999");
+		connCyp.createKeyQuestion("5", "", "", "", "");
+		
+		//testa a re-criação de chaves //não deveria ser feito outros nós!
+		connCyp.createKey("1", "2", "3", "CASA BOA", "CASA BEM RUIM", "CASA RUIM");
+		connCyp.createKey("2", "", "", "", "", "");
+		connCyp.createKeyQuestion("4", "2", "3", "4", "999");
+		connCyp.createKeyQuestion("5", "", "", "", "");
+		
+		//testa a criação de predador com o mesmo código
+		connCyp.createPredator("123", "001", "Peixe Lobo", "Mau", "Sucesso para destruir a casa", "Lobos");
+		connCyp.createPredator("223", "001", "Peixe Lobo", "Mau", "Sucesso para destruir a casa", "Lobos");
+		
+		//testes adicionais
+		connCyp.createFAO("LOCAL", "PERTO DA CASA BOA");
+		connCyp.relateSpecieFAO("LOCAL", "999");
+
+		//testa a criação de predador sem código
+		connCyp.createPredator("999", "", "Peixe Lobo", "Mau", "Não conseguiu", "Lobos");
+	}
+	
+	public void species_to_classes() {
+		try {
+			// query result
+			ResultSet rs;
+			
+			// amount of rows on table
+			rs = connAcc.query("SELECT COUNT (*) FROM CLASSES");
+			rs.next();
+			number_classes = Integer.parseInt(rs.getString(1));
+			
+			rs = connAcc.query("SELECT COUNT (*) FROM ORDERS");
+			rs.next();
+			number_orders = Integer.parseInt(rs.getString(1));
+			rs = connAcc.query("SELECT COUNT (*) FROM FAMILIES");
+			rs.next();
+			number_families = Integer.parseInt(rs.getString(1));
+			rs = connAcc.query("SELECT COUNT (*) FROM GENERA");
+			rs.next();
+			number_genera = Integer.parseInt(rs.getString(1));
+			rs = connAcc.query("SELECT COUNT (*) FROM SPECIES");
+			rs.next();
+			number_species = Integer.parseInt(rs.getString(1));
+			
+			// to display information
+			Integer count;
+			//-----------ADD CLASSES BLOCK
+			count = 0;
+			System.out.println("Adding classes!");
+			
+			//access query
+			rs = connAcc.query("SELECT [ClassNum], [Class], [CommonName] FROM [CLASSES]");
+			
+			while (rs.next()) {
+				// send to cypher
+				connCyp.createClass(rs.getString(1), rs.getString(2), rs.getString(3));
+				
+				// display information
+				count++;
+				if(count == number_classes || count%10 == 0)
+					System.out.print(String.format("Classes [%s/%s]", count, number_classes)+"\r");
+			}
+			
+			// commit after transfering each block
+			connCyp.commit();
+			//-----------END ADD CLASSES BLOCK
+			
+			//-----------ADD ORDERS BLOCK
+			count = 0;
+			System.out.println("Adicionando ordens!");
+			rs = connAcc.query("SELECT [Ordnum], [Order], [CommonName], [ClassNum] FROM [ORDERS]");
+			
+			while (rs.next()) {
+				connCyp.createOrder(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4));
+				count++;
+				if(count == number_orders || count%10 == 0)
+					System.out.print(String.format("Orders [%s/%s]", count, number_orders)+"\r");
+			}
+			
+			connCyp.commit();
+			//-----------END ADD ORDERS BLOCK
+			//-----------ADD FAMILIES BLOCK
+			count = 0;
+			System.out.println("Adicionando famílias!");
+			rs = connAcc.query("SELECT [FamCode], [Family], [CommonName], [Ordnum] FROM [FAMILIES]");
+			
+			while (rs.next()) {
+				connCyp.createFamily(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4));
+				count++;
+				if(count == number_families || count%10 == 0)
+					System.out.print(String.format("Families [%s/%s]", count, number_families)+"\r");
+			}
+			
+			connCyp.commit();
+			//-----------END ADD FAMILIES BLOCK
+			//-----------ADD GENERA BLOCK
+			count = 0;
+			System.out.println("Adicionando gêneros!");
+			rs = connAcc.query("SELECT [GenCode], [GenName], [FamCode] FROM [GENERA]");
+			
+			while (rs.next()) {
+				connCyp.createGenus(rs.getString(1), rs.getString(2), rs.getString(3));
+				count++;
+				if(count == number_genera || count%10 == 0)
+					System.out.print(String.format("Genera [%s/%s]", count, number_genera)+"\r");
+			}
+			
+			connCyp.commit();
+			//-----------END ADD GENERA BLOCK
+			//-----------ADD SPECIES BLOCK
+			count = 0;
+			System.out.println("Adicionando espécies!");
+			rs = connAcc.query("SELECT [SpecCode], [Species], [FBname], [GenCode], [FamCode] FROM [SPECIES]");
+			
+			while (rs.next()) {
+				if(rs.getString(4) != "")
+					connCyp.createSpeciesGen(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4));
+				else {
+					System.out.println("|");
+					connCyp.createSpeciesFam(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(5));
+				}
+				count++;
+				if(count == number_species || count%10 == 0)
+					System.out.print(String.format("Species [%s/%s]", count, number_species)+"\r");
+			}
+			
+			connCyp.commit();
+			//-----------END ADD SPECIES BLOCK
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void areas_fao() {
+		try {
+			ResultSet rs;
+			
+			rs = connAcc.query("SELECT COUNT (*) FROM COUNTREF");
+			rs.next();
+			number_countries = Integer.parseInt(rs.getString(1));
+			rs = connAcc.query("SELECT COUNT (*) FROM FAOARREF");
+			rs.next();
+			number_faos = Integer.parseInt(rs.getString(1));
+			rs = connAcc.query("SELECT COUNT (*) FROM ECOSYSTEMREF");
+			rs.next();
+			number_ecosystems = Integer.parseInt(rs.getString(1));
+			
+			rs = connAcc.query("SELECT COUNT (*) FROM COUNTFAOREF");
+			rs.next();
+			number_relations_countfao = Integer.parseInt(rs.getString(1));
+			rs = connAcc.query("SELECT COUNT (*) FROM ECOSYSTEMCNTREF");
+			rs.next();
+			number_relations_ecosystemcountry = Integer.parseInt(rs.getString(1));
+			rs = connAcc.query("SELECT COUNT (*) FROM ECOSYSTEMFAOREF");
+			rs.next();
+			number_relations_ecosystemfao = Integer.parseInt(rs.getString(1));
+			
+			Integer count;
+			//-----------ADD COUNTRIES BLOCK
+			count = 0;
+			System.out.println("Adicionando países!");
+			rs = connAcc.query("SELECT [C_Code], [PAESE] FROM [COUNTREF]");
+			
+			while (rs.next()) {
+				connCyp.createCountry(rs.getString(1), rs.getString(2));
+				count++;
+				if(count == number_countries || count%10 == 0)
+					System.out.print(String.format("Countries [%s/%s]", count, number_countries)+"\r");
+			}
+			
+			connCyp.commit();
+			//-----------END ADD COUNTRIES BLOCK
+			//-----------ADD FAOS BLOCK
+			count = 0;
+			System.out.println("Adicionando FAOs!");
+			rs = connAcc.query("SELECT [AreaCode], [FAO] FROM [FAOARREF]");
+			
+			while (rs.next()) {
+				connCyp.createFAO(rs.getString(1), rs.getString(2));
+				count++;
+				if(count == number_faos || count%10 == 0)
+					System.out.print(String.format("FAOs [%s/%s]", count, number_faos)+"\r");
+			}
+			
+			connCyp.commit();
+			//-----------END ADD FAOS BLOCK
+			//-----------ADD ECOSYSTEM BLOCK
+			count = 0;
+			System.out.println("Adicionando Ecosistemas!");
+			rs = connAcc.query("SELECT [E_CODE], [EcosystemName] FROM [ECOSYSTEMREF]");
+			
+			while (rs.next()) {
+				connCyp.createEcosystem(rs.getString(1), rs.getString(2));
+				count++;
+				if(count == number_ecosystems || count%10 == 0)
+					System.out.print(String.format("Ecosystems [%s/%s]", count, number_ecosystems)+"\r");
+			}
+			
+			connCyp.commit();
+			//-----------END ADD ECOSYSTEM BLOCK
+			
+			//-----------ADD COUNTRYFAO BLOCK
+			count = 0;
+			System.out.println("Adicionando relações países-FAOs!");
+			rs = connAcc.query("SELECT [C_CODE], [AreaCode] FROM [COUNTFAOREF]");
+			
+			while (rs.next()) {
+				connCyp.relateCountryFAO(rs.getString(1), rs.getString(2));
+				count++;
+				if(count == number_relations_countfao || count%10 == 0)
+					System.out.print(String.format("Relations Country-FAOs [%s/%s]", count, number_relations_countfao)+"\r");
+			}
+			
+			connCyp.commit();
+			//-----------END ADD COUNTRYFAO BLOCK
+			
+			//-----------ADD ECOSYSTEMCOUNTRY BLOCK
+			count = 0;
+			System.out.println("Adicionando relações ecosistemas-países!");
+			rs = connAcc.query("SELECT [E_CODE], [C_CODE] FROM [ECOSYSTEMCNTREF]");
+			
+			while (rs.next()) {
+				connCyp.relateEcosystemCountry(rs.getString(1), rs.getString(2));
+				count++;
+				if(count == number_relations_ecosystemcountry || count%10 == 0)
+					System.out.print(String.format("Relations Ecosystem-Countries [%s/%s]", count, number_relations_ecosystemcountry)+"\r");
+			}
+			
+			connCyp.commit();
+			//-----------END ADD ECOSYSTEMCOUNTRY BLOCK
+			
+			//-----------ADD ECOSYSTEMFAO BLOCK
+			count = 0;
+			System.out.println("Adicionando relações ecosistemas-FAOs!");
+			rs = connAcc.query("SELECT [E_CODE], [AreaCode] FROM [ECOSYSTEMFAOREF]");
+			
+			while (rs.next()) {
+				connCyp.relateEcosystemFAO(rs.getString(1), rs.getString(2));
+				count++;
+				if(count == number_relations_ecosystemfao || count%10 == 0)
+					System.out.print(String.format("Relations Ecosystem-FAOs [%s/%s]", count, number_relations_ecosystemfao)+"\r");
+			}
+			
+			connCyp.commit();
+			//-----------END ADD ECOSYSTEMFAO BLOCK
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void predats() {
+		try {
+			ResultSet rs;
+			
+			rs = connAcc.query("SELECT COUNT (*) FROM PREDATS");
+			rs.next();
+			number_predats = Integer.parseInt(rs.getString(1));
+			
+			Integer count;
+			//-----------ADD PREDATS BLOCK
+			count = 0;
+			System.out.println("Adicionando predadores!");
+			rs = connAcc.query("SELECT [SpecCode], [PredatCode], [PredatorName], [PredatorI], [PredatorII], [PredatorGroup] FROM [PREDATS]");
+			
+			while (rs.next()) {
+				connCyp.createPredator(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5), rs.getString(6));
+				count++;
+				if(count == number_predats || count%10 == 0)
+					System.out.print(String.format("Predators [%s/%s]", count, number_predats)+"\r");
+			}
+			
+			connCyp.commit();
+			//-----------END ADD PREDATS BLOCK
+
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void species_to_places() {
+		try {
+			ResultSet rs;
+			
+			rs = connAcc.query("SELECT COUNT (*) FROM COUNTRY");
+			rs.next();
+			number_species_country = Integer.parseInt(rs.getString(1));
+			
+			rs = connAcc.query("SELECT COUNT (*) FROM COUNTFAO");
+			rs.next();
+			number_species_FAO = Integer.parseInt(rs.getString(1));
+			
+			rs = connAcc.query("SELECT COUNT (*) FROM ECOSYSTEMCOUNTRY");
+			rs.next();
+			number_species_ecosystem = Integer.parseInt(rs.getString(1));
+			
+			Integer count;
+			
+			//-----------ADD COUNTRY_SPECIES BLOCK
+			count = 0;
+			System.out.println("Adicionando relações país-espécies!");
+			rs = connAcc.query("SELECT [C_CODE], [SpecCode] FROM [COUNTRY]");
+			
+			while (rs.next()) {
+				connCyp.relateSpecieCountry(rs.getString(1), rs.getString(2));
+				count++;
+				if(count == number_species_country || count%10 == 0)
+					System.out.print(String.format("Country-Species [%s/%s]", count, number_species_country)+"\r");
+			}
+			
+			connCyp.commit();
+			//-----------END ADD COUNTRY_SPECIES BLOCK
+			
+			
+			//-----------ADD FAO_SPECIES BLOCK
+			count = 0;
+			System.out.println("Adicionando relações FAOs-espécies!");
+			rs = connAcc.query("SELECT [AreaCode], [SpecCode] FROM [COUNTFAO]");
+			
+			while (rs.next()) {
+				connCyp.relateSpecieFAO(rs.getString(1), rs.getString(2));
+				count++;
+				if(count == number_species_FAO || count%10 == 0)
+					System.out.print(String.format("FAO-Species [%s/%s]", count, number_species_FAO)+"\r");
+				if(count % 1000 == 0) {
+					System.out.println("intermediate commit");
+					connCyp.commit();
+				}
+			}
+			
+			connCyp.commit();
+			//-----------END ADD FAO_SPECIES BLOCK
+			
+			
+			//-----------ADD ECOSYSTEM_SPECIES BLOCK
+			count = 0;
+			System.out.println("Adicionando relações ecosistemas-espécies!");
+			rs = connAcc.query("SELECT [E_CODE], [Speccode] FROM [ECOSYSTEMCOUNTRY]");
+			
+			while (rs.next()) {
+				connCyp.relateSpecieEcosystem(rs.getString(1), rs.getString(2));
+				count++;
+				if(count == number_species_ecosystem || count%10 == 0)
+					System.out.print(String.format("Ecosystem-Species [%s/%s]", count, number_species_ecosystem)+"\r");
+			}
+			
+			connCyp.commit();
+			//-----------END ADD ECOSYSTEM_SPECIES BLOCK 
+			
+
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	void keys_to_all() {
+		try {
+			ResultSet rs;
+			
+			rs = connAcc.query("SELECT COUNT (*) FROM KEYS");
+			rs.next();
+			number_keys = Integer.parseInt(rs.getString(1));
+			
+			rs = connAcc.query("SELECT COUNT (*) FROM KEYQUESTIONS");
+			rs.next();
+			number_keyquestions = Integer.parseInt(rs.getString(1));
+			
+			Integer count;
+			//-----------ADD KEYS BLOCK
+			count = 0;
+			System.out.println("Adicionando relações de chave!");
+			rs = connAcc.query("SELECT [KeyCode], [OrdNum], [FamCode], [AreaCode], [C_CODE], [E_CODE] FROM [KEYS]");
+			
+			while (rs.next()) {
+				connCyp.createKey(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5), rs.getString(6));
+				count++;
+				if(count == number_keys || count%10 == 0)
+					System.out.print(String.format("Keys [%s/%s]", count, number_keys)+"\r");
+			}
+			
+			connCyp.commit();
+			//-----------END ADD KEYS BLOCK
+			//-----------ADD KEYQUESTIONS BLOCK
+			count = 0;
+			System.out.println("Adicionando relações de chave-questões!");
+			rs = connAcc.query("SELECT [KeyCode], [OrdNum], [FamCode], [GenCode], [SpecCode] FROM [KEYQUESTIONS]");
+			
+			while (rs.next()) {
+				connCyp.createKeyQuestion(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5));
+				count++;
+				if(count == number_keyquestions || count%10 == 0)
+					System.out.print(String.format("Key-Questions [%s/%s]", count, number_keyquestions)+"\r");
+			}
+			
+			connCyp.commit();
+			//-----------END ADD KEYQUESTIONS BLOCK
+
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
+	}
+}
