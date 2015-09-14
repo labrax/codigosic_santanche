@@ -14,7 +14,7 @@
 #include "../boolean/nodes/boolean_or.hpp"
 #include "../boolean/nodes/boolean_variable.hpp"
 
-const char RECIPES_FILE[256] = "/home/vroth/Desktop/Dados para pesquisa/scirep-cuisines-detail/allr_recipes.txt";
+const char RECIPES_FILE[256] = "/home/vroth/dadosic_santanche/foodnet/dados_web/scirep-cuisines-detail/allr_recipes.txt";
 
 RecipesLoader::RecipesLoader() {
 	names_counter = 0;

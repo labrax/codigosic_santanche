@@ -43,9 +43,11 @@ void loadRecipes() {
 
 	unsigned int amount_recipes = recipes.size();
 	unsigned int matches_recipes = amount_recipes * 4;
-	printf("we have %u recipes! will do %u matchings (num x 5)\n", amount_recipes, matches_recipes);
+	printf("we have %u recipes!\n", amount_recipes);
 
 	unsigned int count_both = 0, count_first = 0, count_second = 0, count_none = 0;
+
+	//match some
 #pragma omp parallel for
 	for(long int i = 0; i < matches_recipes; i++)
 	{
@@ -68,12 +70,14 @@ void loadRecipes() {
 				count_none++;
 		}
 	}
+	printf("%d matchings done!\n", matches_recipes);
+
 
 	/*
 	//match all
-#pragma omp parallel for
 	for(long int i = 0 ; i < amount_recipes; i++)
 	{
+#pragma omp parallel for
 		for(long int j = i+1 ; j < amount_recipes; j++)
 		{
 			unsigned int first = i;
@@ -95,8 +99,9 @@ void loadRecipes() {
 					count_none++;
 			}
 		}
-	}*/
-	printf("%d matchings done!\n", matches_recipes);
+	}
+	printf("%d matchings done!\n", amount_recipes*(amount_recipes-1)/2);
+*/
 
 	unsigned int * amount_vertex = new unsigned int[amount_recipes];
 
@@ -117,7 +122,7 @@ void loadRecipes() {
 
 	//cleanup!
 	delete amount_vertex;
-	for(unsigned int i; i < recipes.size(); i++)
+	for(unsigned int i = 0; i < recipes.size(); i++)
 	{
 		delete(recipes[i]);
 	}
