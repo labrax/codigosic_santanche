@@ -27,8 +27,11 @@ RandomGenerator::~RandomGenerator() { }
 long RandomGenerator::rand()
 {
 	std::random_device rd;
-
-	long dice_roll = rd();
+	long dice_roll;
+#pragma omp critical
+	{
+		dice_roll = rd();
+	}
 	return dice_roll;
 }
 

@@ -8,21 +8,22 @@
 #ifndef BOOLEAN_BOOLEAN_STORE_HPP_
 #define BOOLEAN_BOOLEAN_STORE_HPP_
 
-#include <unordered_map>
+#include <map>
+#include <bitset>
 
 #include "../config.hpp"
 
 class BooleanStore {
 private:
-#ifdef UNORDERED_MAP
-	std::unordered_map<unsigned int, bool> map;
+#ifdef MAP
+	std::map<unsigned int, bool> map;
 #else
-	bool map[AMOUNT_VARIABLES];
+	std::bitset<AMOUNT_VARIABLES> map;
 #endif
 
 public:
 	BooleanStore();
-	virtual ~BooleanStore() {} ;
+	virtual ~BooleanStore();
 	void addBool(unsigned int id, bool value);
 	bool getBool(unsigned int id);
 };

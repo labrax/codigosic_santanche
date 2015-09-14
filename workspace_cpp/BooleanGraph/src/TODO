@@ -6,7 +6,7 @@ boolean
 		boolean_not ok
 		boolean_variable ok
 	boolean_expression_factory ok
-	boolean_store ok (unordered_map / vector)
+	boolean_store ok (map / bitset)
 
 graph:
 	node ok

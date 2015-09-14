@@ -35,7 +35,10 @@ BooleanStore * Node::getBooleanStore() {
 bool Node::try_friendship(Node * other) {
 	if(boolean_node->compute(other->getBooleanStore()))
 	{
-		neighbours.insert(other);
+		#pragma omp critical
+		{
+			neighbours.insert(other);
+		}
 		return true;
 	}
 	return false;

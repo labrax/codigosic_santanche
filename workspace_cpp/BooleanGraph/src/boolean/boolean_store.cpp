@@ -8,15 +8,17 @@
 #include "boolean_store.hpp"
 
 BooleanStore::BooleanStore() {
-#ifdef UNORDERED_MAP
-	 map = std::unordered_map<unsigned int, bool>();
-#endif
+
+}
+
+BooleanStore::~BooleanStore() {
+
 }
 
 void BooleanStore::addBool(unsigned int id, bool value) {
-	#ifdef UNORDERED_MAP
+	#ifdef MAP
 		if(map.find(id) != map.end()) {
-			std::unordered_map<unsigned int, bool>::iterator it = map.find(id);
+			std::map<unsigned int, bool>::iterator it = map.find(id);
 			it->second = value;
 		}
 		else {
@@ -28,7 +30,7 @@ void BooleanStore::addBool(unsigned int id, bool value) {
 }
 
 bool BooleanStore::getBool(unsigned int id) {
-#ifdef UNORDERED_MAP
+#ifdef MAP
 	if(map.find(id) != map.end())
 		return map.at(id);
 #else
