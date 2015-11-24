@@ -8,8 +8,8 @@
 
 #include "config.hpp"
 
-const unsigned int AMOUNT_NODES = 10000000;
-const unsigned int AMOUNT_MATCHES = 5000000;
+const unsigned int AMOUNT_NODES = 1*1000;
+const unsigned int AMOUNT_MATCHES = 4*1000;
 
 const int RANDOM_SEED = 0;
 

@@ -11,132 +11,78 @@
 #include <string>
 #include <vector>
 
+#include <sys/resource.h>
+
 #include "boolean/boolean_expression_factory.hpp"
 #include "boolean/boolean_store.hpp"
 #include "boolean/nodes/boolean_node.hpp"
 #include "graph/node.hpp"
+#include "graph/graph.hpp"
+#include "graph/statistics.hpp"
 #include "random_generator.hpp"
+
+#include "graph/csv_output.hpp"
 
 #include "recipes/recipes_loader.hpp"
 #include "recipes/recipe.hpp"
 
 void createGraph();
 void loadRecipes();
+void limits();
 
 int main(int argc, char * argv[]) {
-	//printf("Hello World!\n");
 	//teste();
 
-	//createGraph();
-	loadRecipes();
+	limits();
+	createGraph();
+	//loadRecipes();
 
 	return 0;
+}
+
+void limits() {
+	struct rlimit limits;
+	limits.rlim_cur = 3*1000*1000*1000; //limit to 3GB!
+	limits.rlim_max = 3*1000*1000*1000;
+	setrlimit(RLIMIT_DATA, &limits);
 }
 
 void loadRecipes() {
 	RandomGenerator gs = RandomGenerator();
 	RecipesLoader rl = RecipesLoader();
 
+	printf("seed = %u\n", gs.getSeed());
+
 	rl.readFile();
 	//rl.printIngredientNamesId();
-	std::vector<Recipe *> recipes = rl.getRecipes();
 
-	unsigned int amount_recipes = recipes.size();
-	unsigned int matches_recipes = amount_recipes * 4;
-	printf("we have %u recipes!\n", amount_recipes);
+	Graph<Recipe> graph(rl.getRecipes());
 
-	unsigned int count_both = 0, count_first = 0, count_second = 0, count_none = 0;
+	std::size_t amount_recipes = graph.size();
+	printf("we have %ld recipes!\n", amount_recipes);
 
-	//match some
-#pragma omp parallel for
-	for(long int i = 0; i < matches_recipes; i++)
-	{
-		unsigned int first = gs.getInteger(amount_recipes);
-		unsigned int second = gs.getInteger(amount_recipes);
+	graph.matching(amount_recipes * 4, gs);
 
-		bool first_try, second_try;
-		first_try = recipes[first]->try_friendship(recipes[second]);
-		second_try = recipes[second]->try_friendship(recipes[first]);
+	Statistics<Recipe> sta(graph);
+	sta.getAll();
+	sta.printAll();
 
-#pragma omp critical
-		{
-			if(first_try && second_try)
-				count_both++;
-			else if(first_try)
-				count_first++;
-			else if(second_try)
-				count_second++;
-			else
-				count_none++;
-		}
-	}
-	printf("%d matchings done!\n", matches_recipes);
-
-
-	/*
-	//match all
-	for(long int i = 0 ; i < amount_recipes; i++)
-	{
-#pragma omp parallel for
-		for(long int j = i+1 ; j < amount_recipes; j++)
-		{
-			unsigned int first = i;
-			unsigned int second = j;
-
-			bool first_try, second_try;
-			first_try = recipes[first]->try_friendship(recipes[second]);
-			second_try = recipes[second]->try_friendship(recipes[first]);
-
-#pragma omp critical
-			{
-				if(first_try && second_try)
-					count_both++;
-				else if(first_try)
-					count_first++;
-				else if(second_try)
-					count_second++;
-				else
-					count_none++;
-			}
-		}
-	}
-	printf("%d matchings done!\n", amount_recipes*(amount_recipes-1)/2);
-*/
-
-	unsigned int * amount_vertex = new unsigned int[amount_recipes];
-
-	for(unsigned int i = 0; i < amount_recipes; i++) {
-		amount_vertex[i] = 0;
-	}
-	for(unsigned int i = 0; i < amount_recipes; i++) {
-		amount_vertex[recipes[i]->getSet().size()]++;
-	}
-
-	printf("countFirst: %u\ncountSecond: %u\ncountBoth: %u\ncountNone: %u\n", count_first, count_second, count_both, count_none);
-
-	printf("Amount connections,Amount nodes\n");
-	for(unsigned int i = 0; i < amount_recipes; i++) {
-		if(amount_vertex[i] != 0)
-			printf("%d,%u\n", i, amount_vertex[i]);
-	}
-
-	//cleanup!
-	delete amount_vertex;
-	for(unsigned int i = 0; i < recipes.size(); i++)
-	{
-		delete(recipes[i]);
-	}
+	graph.free();
 }
 
 void createGraph() {
-	printf("starting to create graph\n");
+	//printf("starting to create graph\n");
 
 	BooleanExpressionFactory bef = BooleanExpressionFactory();
 	RandomGenerator gs = RandomGenerator();
 
-	printf("creating nodes!\n");
-	std::vector<Node*> nodes;
+	printf("\"seed\",%u\n", gs.getSeed());
 
+	//printf("creating nodes!\n");
+	std::vector<Node*> nodes;
+	Graph<Node> graph(nodes);
+
+	/*generate random properties and functions*/
 #pragma omp parallel for
 	for(unsigned int i = 0; i < AMOUNT_NODES; i++) {
 		BooleanStore * bs = new BooleanStore();
@@ -151,63 +97,24 @@ void createGraph() {
 
 #pragma omp critical
 		{
-			nodes.insert(nodes.end(), new Node(i, bs, exp));
+			graph.insert(new Node(i, bs, exp));
 		}
 		/*if(i%10000 == 0)
 			printf("[%u/%u] Nodes\n", i, AMOUNT_NODES);*/
 	}
-	printf("%d nodes created!\n", AMOUNT_NODES);
+	//printf("%d nodes created!\n", AMOUNT_NODES);
 
-	unsigned int count_both = 0, count_first = 0, count_second = 0, count_none = 0;
+	graph.matching(AMOUNT_MATCHES, gs);
 
-	printf("matching!\n");
-#pragma omp parallel for
-	for(long i = 0 ; i < AMOUNT_MATCHES; i++) {
-		unsigned int first = gs.getInteger(AMOUNT_NODES);
-		unsigned int second = gs.getInteger(AMOUNT_NODES);
+	Statistics<Node> sta(graph);
 
-		bool first_try, second_try;
-		first_try = nodes[first]->try_friendship(nodes[second]);
-		second_try = nodes[second]->try_friendship(nodes[first]);
+	sta.getAll();
+	sta.printAll();
 
-#pragma omp critical
-		{
-			if(first_try && second_try)
-				count_both++;
-			else if(first_try)
-				count_first++;
-			else if(second_try)
-				count_second++;
-			else
-				count_none++;
-		}
+	CSVOutput csv;
+	csv.insertNodes( graph.getNodes() );
 
-		/*if(i%(AMOUNT_MATCHES/10) == 0)
-			printf("[%ld/%d] Matches\n", i, AMOUNT_MATCHES);*/
-	}
-	printf("%d matchings done!\n", AMOUNT_MATCHES);
-
-	unsigned int * amount_vertex = new unsigned int[AMOUNT_NODES];
-	for(unsigned int i = 0; i < AMOUNT_NODES; i++) {
-		amount_vertex[i] = 0;
-	}
-	for(unsigned int i = 0; i < AMOUNT_NODES; i++) {
-		amount_vertex[nodes[i]->getSet().size()]++;
-	}
-
-	printf("countFirst: %u\ncountSecond: %u\ncountBoth: %u\ncountNone: %u\n", count_first, count_second, count_both, count_none);
-
-	printf("Amount connections,Amount nodes\n");
-	for(unsigned int i = 0; i < AMOUNT_NODES; i++) {
-		if(amount_vertex[i] != 0)
-			printf("%d,%u\n", i, amount_vertex[i]);
-	}
-
-	//cleanup!
-	delete amount_vertex;
-	for(unsigned int i = 0; i < AMOUNT_NODES; i++) {
-		delete nodes[i];
-	}
+	graph.free();
 }
 
 void teste() {

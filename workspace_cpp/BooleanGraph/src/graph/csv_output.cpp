@@ -24,11 +24,27 @@ void CSVOutput::printToFile(char * str) {
 }
 
 void CSVOutput::insertNodes(std::vector<Node *> & nodes) {
-	for(std::vector<Node *>::iterator it = nodes.begin(); it != nodes.end(); it++) {
-		for(std::set<Node *>::iterator it2 = (*it)->getSet().begin(); it2 != (*it)->getSet().end(); it2++) {
+	unsigned long int i = 0;
+	unsigned long int amount = 0;
+	for(std::vector<Node *>::iterator it = nodes.begin(); it != nodes.end(); ++it)
+	{
+		std::set<Node *> curr_set = (*it)->getSet();
+
+		amount += curr_set.size();
+		unsigned long int a = 0;
+		for(std::set<Node *>::iterator it2 = curr_set.begin(); it2 != curr_set.end(); ++it2)
+		{
 			char str[64];
-			sprintf(str, "%d,%d", (*it)->getId(), (*it2)->getId());
+			sprintf(str, "%d,%d\n", (*it)->getId(), (*it2)->getId());
 			printToFile(str);
+			i++;
+			a++;
+		}
+		if(a != curr_set.size())
+		{
+			printf("%ld %ld\n", a, curr_set.size());
 		}
 	}
+	printf("to file: %ld/%ld\n", i, amount);
+	fflush(fp);
 }

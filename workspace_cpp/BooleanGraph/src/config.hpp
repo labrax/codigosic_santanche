@@ -15,6 +15,14 @@ extern const unsigned int AMOUNT_MATCHES;
 extern const int RANDOM_SEED;
 extern const char CSV_FILE[256];
 
-#define MAP
+//#define MAP
+
+#ifndef MATCH_ALL
+	#define MATCH_SOME
+#endif
+
+#ifdef MATCH_SOME
+	#undef MATCH_ALL
+#endif
 
 #endif /* CONFIG_HPP_ */

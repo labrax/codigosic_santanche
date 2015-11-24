@@ -21,7 +21,8 @@ unsigned int Node::getId() {
 }
 
 void Node::insertNeighbour(Node * elem) {
-	neighbours.insert(elem);
+	if(neighbours.find(elem) == neighbours.end())
+		neighbours.insert(elem);
 }
 
 std::set<Node *> Node::getSet() {
