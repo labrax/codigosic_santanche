@@ -16,3 +16,6 @@
 ### Generated files
 *graph.db*
 *~
+
+### Python files
+*.pyc
