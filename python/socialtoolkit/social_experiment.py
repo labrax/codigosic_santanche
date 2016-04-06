@@ -30,12 +30,12 @@ class Experiment(object):
     def iterate(self):
         #if self.i % 10**3 == 0:
             #print self.i
-        self.i = self.i + 1
         while not self._queue.empty() and self._queue.queue[0][0] <= self.i:
             e = self._queue.get()
             if e[1].step(self.i) != self.i:
                 self._queue.put((e[1].next(), e[1]))
         self._convergence.update(self.i, self._model.iterate())
+        self.i = self.i + 1
 
 class EqualMultilayerExperiment(Experiment):
     def __init__(self, G, population, model, convergence, layers):

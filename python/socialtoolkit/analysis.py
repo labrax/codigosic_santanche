@@ -5,7 +5,10 @@
 
 """
 
-class CommandAnalysis(object):
+class AnalysisAlgorithm(object):
+    pass
+
+class CommandAnalysis(AnalysisAlgorithm):
     def __init__(self, first, step, function, data):
         self._next = first
         self._step = step

@@ -13,6 +13,8 @@ from population import normal_distribution
 from expandable_model import ExpandableModel
 from analysis import CommandAnalysis, AmountIterationLayerAnalysis
 
+from output_analysis import OutputAnalysis
+
 from graph_util import get_grid_groups
 from util import get_cultural_groups, overlap_similarity_layer
 
@@ -59,3 +61,5 @@ if __name__ == "__main__":
     print "get_cultural_groups:", analysis[3].get_results()
     print "iterations for each layer:", analysis[4].get_results()
     
+    oa = OutputAnalysis(analysis[0:3], headers=[get_grid_groups, get_grid_groups, get_grid_groups, get_cultural_groups])
+    oa.write()
