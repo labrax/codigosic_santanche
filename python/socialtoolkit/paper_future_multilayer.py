@@ -55,7 +55,7 @@ if __name__ == "__main__":
     val = experiment.converge()
     end = clock()
     
-    print end-start, val
+    #print end-start, val
     #print "final", get_grid_groups(experiment._G, experiment._population)
     #print "final", get_cultural_groups(experiment._population)
     #print "get_grid_groups[0]:", analysis[0].get_results()
@@ -78,4 +78,15 @@ if __name__ == "__main__":
     """
     od = OutputAnalysis([(1, 2), (3, 4)], headers="a bunch of cool numbers", delimeter=' --> ')
     od.write()
+    """
+    
+    oe = OutputAnalysis([end - start], headers="execution time")
+    oe.write()
+    
+    of = OutputAnalysis([val], headers="total iterations")
+    of.write()
+
+    """
+    og = OutputAnalysis([1, 2, 3, 4, 5], headers="lines?")
+    og.write()
     """
