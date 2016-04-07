@@ -15,8 +15,8 @@ from analysis import CommandAnalysis, AmountIterationLayerAnalysis
 
 from output_analysis import OutputAnalysis
 
-from graph_util import get_grid_groups
-from util import get_cultural_groups, overlap_similarity_layer
+from graph_util import get_grid_groups, fast_get_connected_components_len
+from util import get_cultural_groups_layer, get_cultural_groups, overlap_similarity_layer
 
 from time import clock
 
@@ -24,10 +24,10 @@ if __name__ == "__main__":
     width = 32
     height = 32
     features = 6
-    traits = 2
+    traits = 10000
     layers = 3
-    max_iterations = 5*10**5
-    step_check = 10**4
+    max_iterations = 5*10**6
+    step_check = 3*10**4
     step_analysis = 10**3
     
     all_G = []
@@ -39,9 +39,12 @@ if __name__ == "__main__":
     experiment = EqualMultilayerExperiment(all_G, population, model, convergence, layers)
     
     analysis = [
-        CommandAnalysis(0, step_analysis, get_grid_groups, [experiment.all_G[0], experiment._population]),
-        CommandAnalysis(0, step_analysis, get_grid_groups, [experiment.all_G[1], experiment._population]),
-        CommandAnalysis(0, step_analysis, get_grid_groups, [experiment.all_G[2], experiment._population]),
+        CommandAnalysis(0, step_analysis, fast_get_connected_components_len, [experiment.all_G[0]]),
+        CommandAnalysis(0, step_analysis, fast_get_connected_components_len, [experiment.all_G[1]]),
+        CommandAnalysis(0, step_analysis, fast_get_connected_components_len, [experiment.all_G[2]]),
+        CommandAnalysis(0, step_analysis, get_cultural_groups_layer, [experiment._population, 0, layers]),
+        CommandAnalysis(0, step_analysis, get_cultural_groups_layer, [experiment._population, 1, layers]),
+        CommandAnalysis(0, step_analysis, get_cultural_groups_layer, [experiment._population, 2, layers]),
         CommandAnalysis(0, step_analysis, get_cultural_groups, [experiment._population]),
         AmountIterationLayerAnalysis(experiment._curr, layers)]
     experiment.add_analysis(analysis)
@@ -55,11 +58,24 @@ if __name__ == "__main__":
     print end-start, val
     #print "final", get_grid_groups(experiment._G, experiment._population)
     #print "final", get_cultural_groups(experiment._population)
-    print "get_grid_groups[0]:", analysis[0].get_results()
-    print "get_grid_groups[1]:", analysis[1].get_results()
-    print "get_grid_groups[2]:", analysis[2].get_results()
-    print "get_cultural_groups:", analysis[3].get_results()
-    print "iterations for each layer:", analysis[4].get_results()
+    #print "get_grid_groups[0]:", analysis[0].get_results()
+    #print "get_grid_groups[1]:", analysis[1].get_results()
+    #print "get_grid_groups[2]:", analysis[2].get_results()
+    #print "get_cultural_groups:", analysis[3].get_results()
+    #print "iterations for each layer:", analysis[-1].get_results()
     
-    oa = OutputAnalysis(analysis[0:3], headers=[get_grid_groups, get_grid_groups, get_grid_groups, get_cultural_groups])
+    oa = OutputAnalysis(analysis[0:7], headers=["iteration", analysis[0]._function, analysis[1]._function, analysis[2]._function, analysis[3]._function, analysis[4]._function, analysis[5]._function, analysis[6]._function], output='all_info.csv')
     oa.write()
+    
+    """
+    ob = OutputAnalysis(analysis[-2], headers=["iteration", "cultural groups"], delimeter='\t', output='cultural_groups.txt')
+    ob.write()
+    """
+    
+    oc = OutputAnalysis(analysis[-1], headers=["iteration1", "iteration2", "iteration3"], delimeter=' ')
+    oc.write()
+    
+    """
+    od = OutputAnalysis([(1, 2), (3, 4)], headers="a bunch of cool numbers", delimeter=' --> ')
+    od.write()
+    """
