@@ -24,7 +24,7 @@ class Centola(Model):
                 i =  get_different_trait_index(features_active, features_passive)
                 features_active[i] = features_passive[i]
                 return True
-        elif s is 0:
+        elif s == 0.0:
             self.G.remove_edge(active, passive)
             new_neighbor = get_new_neighbor(self._all_nodes, set(neighbors))
             self.G.add_edge(active, new_neighbor)
