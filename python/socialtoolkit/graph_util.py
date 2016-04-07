@@ -7,6 +7,7 @@
 
 import networkx as nx
 from math import sqrt
+import bisect
 
 def get_grid_groups(G, population):
     height = width = int(sqrt(len(nx.nodes(G))))
@@ -63,6 +64,8 @@ def fast_get_connected_components(G):
             bisect.insort_left(sizes, amt)
             seen.update(c)
     return sizes
+def fast_get_connected_components_len(G):
+    return len(fast_get_connected_components(G))
 def has_path(G, node1, node2):
     """return true if there is a path in G between 2 nodes"""
     try:
