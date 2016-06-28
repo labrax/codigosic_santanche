@@ -14,10 +14,10 @@ Algumas pastas:
     Implementação de um algoritmo de contaminação por BFS e o PageRank simplificado.
 ##BooleanExpression (2nd/2015)
     Geração de grafos aleatórios seguindo regras de expressões booleanas aleatórias.
+##neo4j_helper (2nd/2015)
+    Programa para ajudar a fechar e reiniciar o Neo4j (foi adicionado no 2graph).
 ##NetworkAxelrod (1st/2016)
     Teste do modelo de Axelrod com dados reais (supondo passagem de características).
-##neo4j_helper
-    Programa para ajudar a fechar e reiniciar o Neo4j (foi adicionado no 2graph).
     
 #workspace_cpp:
 ##BooleanGraph (2nd/2015)
